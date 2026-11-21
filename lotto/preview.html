@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>로또 번호 뽑기</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px 16px;
+      background: #f3f6fb;
+      color: #17233b;
+      font-family: system-ui, -apple-system, "Malgun Gothic", "맑은 고딕", sans-serif;
+    }
+    main {
+      width: min(100%, 760px);
+      padding: clamp(28px, 6vw, 56px) 22px;
+      border-radius: 28px;
+      background: #fff;
+      box-shadow: 0 18px 50px rgba(26, 48, 83, .10);
+      text-align: center;
+    }
+    h1 { margin: 0 0 12px; font-size: clamp(32px, 6vw, 48px); }
+    .intro { margin: 0; font-size: clamp(19px, 3vw, 23px); line-height: 1.55; }
+    .balls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 14px;
+      margin: 38px auto;
+      max-width: 660px;
+    }
+    .ball {
+      width: clamp(76px, 12vw, 92px);
+      height: clamp(76px, 12vw, 92px);
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: #fff;
+      font-size: clamp(32px, 5vw, 40px);
+      font-weight: 800;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      box-shadow: inset 0 -8px 0 rgba(0, 0, 0, .12), 0 5px 12px rgba(0, 0, 0, .12);
+    }
+    .ball:nth-child(1) { background: #b65300; }
+    .ball:nth-child(2) { background: #176bc2; }
+    .ball:nth-child(3) { background: #bd3343; }
+    .ball:nth-child(4) { background: #654ac1; }
+    .ball:nth-child(5) { background: #16785a; }
+    .ball:nth-child(6) { background: #354a69; }
+    .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
+    button {
+      min-height: 68px;
+      min-width: 190px;
+      padding: 14px 26px;
+      border: 0;
+      border-radius: 16px;
+      background: #174fba;
+      color: #fff;
+      font: 800 24px/1.2 system-ui, -apple-system, "Malgun Gothic", "맑은 고딕", sans-serif;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    button:hover:not(:disabled) { filter: brightness(1.08); }
+    button:focus-visible { outline: 4px solid #e09d00; outline-offset: 4px; }
+    button:disabled { opacity: .58; cursor: wait; }
+    #redraw { background: #354a69; }
+    #redraw:disabled { cursor: not-allowed; }
+    .status { min-height: 1.6em; margin: 24px 0 0; font-size: 20px; font-weight: 700; }
+    .note { margin: 12px 0 0; color: #53617b; font-size: 16px; }
+    @media (max-width: 440px) {
+      .balls { max-width: 290px; gap: 12px; }
+      .actions button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>🍀 로또 번호 뽑기</h1>
+    <p class="intro">버튼을 누르면 1부터 45까지<br>겹치지 않는 번호 6개를 뽑아요.</p>
+
+    <div class="balls" role="group" aria-label="뽑힌 로또 번호">
+      <span class="ball" aria-hidden="true">?</span>
+      <span class="ball" aria-hidden="true">?</span>
+      <span class="ball" aria-hidden="true">?</span>
+      <span class="ball" aria-hidden="true">?</span>
+      <span class="ball" aria-hidden="true">?</span>
+      <span class="ball" aria-hidden="true">?</span>
+    </div>
+
+    <div class="actions">
+      <button id="draw" type="button">번호 뽑기</button>
+      <button id="redraw" type="button" disabled>다시 뽑기</button>
+    </div>
+    <p id="status" class="status" role="status" aria-live="polite">번호 뽑기 버튼을 눌러 주세요.</p>
+    <p class="note">재미로 뽑는 번호이며 당첨을 보장하지 않습니다.</p>
+  </main>
+
+  <script>
+    const balls = [...document.querySelectorAll('.ball')];
+    const drawButton = document.getElementById('draw');
+    const redrawButton = document.getElementById('redraw');
+    const status = document.getElementById('status');
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let drawing = false;
+
+    function pickSix() {
+      const numbers = Array.from({ length: 45 }, (_, i) => i + 1);
+      for (let i = numbers.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
+      }
+      return numbers.slice(0, 6);
+    }
+
+    function showNumbers(numbers) {
+      balls.forEach((ball, index) => {
+        ball.textContent = numbers[index];
+      });
+    }
+
+    function finishDraw() {
+      const result = pickSix().sort((a, b) => a - b);
+      showNumbers(result);
+      status.textContent = `뽑힌 번호: ${result.join(', ')}`;
+      drawButton.disabled = false;
+      redrawButton.disabled = false;
+      drawing = false;
+    }
+
+    function startDraw() {
+      if (drawing) return;
+      drawing = true;
+      drawButton.disabled = true;
+      redrawButton.disabled = true;
+      status.textContent = '번호를 뽑고 있어요…';
+
+      if (reduceMotion.matches) {
+        finishDraw();
+        return;
+      }
+
+      showNumbers(pickSix());
+      const rolling = setInterval(() => showNumbers(pickSix()), 75);
+      setTimeout(() => {
+        clearInterval(rolling);
+        finishDraw();
+      }, 1100);
+    }
+
+    drawButton.addEventListener('click', startDraw);
+    redrawButton.addEventListener('click', startDraw);
+  </script>
+</body>
+</html>
